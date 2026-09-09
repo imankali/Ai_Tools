@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- نسخه‌ی فارسی (RTL) -->
+<resources>
+    <string name="app_name">اجنت هاب</string>
+    <string name="pair_title">اتصال به کامپیوتر</string>
+    <string name="pair_server_url">آدرس سرور</string>
+    <string name="pair_token">توکن دسترسی</string>
+    <string name="pair_token_hint">همان توکنی که ترمینال چاپ می‌کند</string>
+    <string name="pair_test">آزمودن اتصال</string>
+    <string name="pair_connect">اتصال</string>
+    <string name="pair_paste">چسباندن</string>
+    <string name="pair_scan_qr">اسکن QR</string>
+    <string name="pair_remember">روی این دستگاه به خاطر بسپار</string>
+    <string name="pair_testing">در حال بررسی اتصال…</string>
+    <string name="pair_ok_online">متصل شد · %1$d ابزار · مدل %2$s</string>
+    <string name="pair_ok_offline">سرور پاسخ داد، ولی هنوز کلید API تنظیم نشده است</string>
+    <string name="pair_err_refused">سرور در دسترس نیست. شبکه یکی است؟ فایروال؟ پرچم --lan؟</string>
+    <string name="pair_err_unauthorized">توکن اشتباه است (۴۰۱). دوباره از ترمینال کپی کنید.</string>
+    <string name="pair_err_badurl">آدرس کامل وارد کنید، مثلاً http://192.168.1.10:8765</string>
+    <string name="menu_reload">نصب تازه</string>
+    <string name="menu_reconnect">تغییر سرور…</string>
+    <string name="menu_open_browser">بازکردن در مرورگر</string>
+    <string name="menu_about">درباره</string>
+    <string name="menu_language">English / فارسی</string>
+    <string name="about_body">یونیورسال اجنت هاب\nگوشی فقط کنترل از راه دور است؛ ایجنت روی کامپیوتر شما و با همان نگهبان‌های ایمنی اجرا می‌شود.\nکلید API هرگز از کامپیوتر بیرون نمی‌رود.</string>
+    <string name="offline_title">ایجنت آفلاین است</string>
+    <string name="offline_body">%1$s در دسترس نیست. مطمئن شوید کامپیوتر بیدار است و «agent-hub --serve --lan» اجرا می‌شود.</string>
+    <string name="offline_retry">تلاش دوباره</string>
+    <string name="notif_channel_name">تأییدیه‌های ایجنت</string>
+    <string name="notif_channel_desc">درخواست‌هایی که به تأیید شما نیاز دارند</string>
+    <string name="notif_approval_title">نیاز به تأیید شما</string>
+    <string name="notif_running">ایجنت در حال کار است…</string>
+    <string name="progress_loading">در حال بارگذاری هاب…</string>
+    <string name="copied">کپی شد</string>
+    <string name="pair_subtitle">آدرسی که کامپیوتر سرو می‌کند را وارد کنید. کلید مدل هرگز از آن ماشین بیرون نمی‌رود.</string>
+    <string name="pair_command_label">روی کامپیوتر اجرا کنید:</string>
+    <string name="pair_command_hint">agent-hub --serve --lan\n# بعد توکن چاپ‌شده را وارد کنید</string>
+    <string name="pair_security_note">نکته: هاب را روی وای‌فای خودتان نگه دارید. برای هر آدرس غیر از localhost توکن لازم است و هر کار خطرناک همان‌جا از شما تأیید می‌گیرد.</string>
+</resources>

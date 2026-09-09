@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- پالت تیره (WebView هم تم را از prefers-color-scheme می‌گیرد) -->
+<resources>
+    <color name="hub_background">#FF0E1118</color>
+    <color name="hub_surface">#FF161B26</color>
+    <color name="hub_text">#FFE8ECF5</color>
+    <color name="hub_splash">#FF0E1118</color>
+</resources>

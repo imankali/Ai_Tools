@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hub_primary">#FF5B8DEF</color>
+    <color name="hub_on_primary">#FFFFFFFF</color>
+    <color name="hub_background">#FFFFFFFF</color>
+    <color name="hub_surface">#FFF6F7FB</color>
+    <color name="hub_text">#FF14171F</color>
+    <color name="hub_danger">#FFD9534F</color>
+    <color name="hub_ok">#FF2E9E6B</color>
+    <color name="hub_splash">#FF101420</color>
+</resources>

@@ -1,0 +1,76 @@
+// Universal Agent Hub — Android app module
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    namespace = "com.agenthub.android"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.agenthub.android"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0.0"
+        // آدرس پیش‌فرض سرور در صفحه‌ی اتصال (بعداً از تنظیمات خوانده می‌شود)
+        buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://192.168.1.10:8765\"")
+        buildConfigField("String", "BRAND_NAME", "\"Universal Agent Hub\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
+        viewBinding = true
+    }
+
+    signingConfigs {
+        // امضای debug به‌صورت پیش‌فرض؛ برای release از keystore خودتان استفاده کنید
+        create("release") {
+            // در CI با متغیرهای محیطی پر می‌شود؛ اگر نبود، APK امضا نشده می‌ماند
+            val storePath = System.getenv("HUB_KEYSTORE_PATH")
+            if (!storePath.isNullOrBlank()) {
+                storeFile = file(storePath)
+                storePassword = System.getenv("HUB_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("HUB_KEY_ALIAS") ?: "agenthub"
+                keyPassword = System.getenv("HUB_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    packaging {
+        resources.excludes += setOf("META-INF/*.version", "META-INF/DEPENDENCIES")
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.activity:activity-ktx:1.9.1")
+    implementation("androidx.webkit:webkit:1.11.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation("com.google.android.material:material:1.12.0")
+}

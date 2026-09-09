@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_reload"
+        android:icon="@android:drawable/ic_menu_rotate"
+        android:title="@string/menu_reload"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_reconnect"
+        android:title="@string/menu_reconnect"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_browser"
+        android:title="@string/menu_open_browser"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_language"
+        android:title="@string/menu_language"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_about"
+        android:title="@string/menu_about"
+        app:showAsAction="never" />
+</menu>

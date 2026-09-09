@@ -1,0 +1,90 @@
+# ---------------------------------------------------------------------------
+# Universal Agent Hub — local development / long-running session
+#
+#   cp .env.example .env        # set OPENAI_API_KEY
+#   docker compose up --build    # interactive CLI in the current directory
+#   docker compose run --rm agent-hub --prompt "summarise this repo" --yes
+#   docker compose run --rm tests
+#
+# Security notes (read docs/security.md before changing these):
+#   * `workspace` is mounted read-write by default; flip `:ro` and add a
+#     separate writable scratch mount for read-only agents.
+#   * `network_mode: bridge` keeps the agent on the default network. Removing
+#     the network section entirely (or `network_mode: host`) gives the agent
+#     access to everything the host can reach — including cloud metadata IPs.
+#   * `cap_drop: [ALL]` + `no-new-privileges` stop the container from escalating.
+# ---------------------------------------------------------------------------
+name: universal-agent-hub
+
+services:
+  agent-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_BROWSER: "${INSTALL_BROWSER:-0}"
+    image: universal-agent-hub:latest
+    env_file:
+      - .env
+    environment:
+      # Inside the container the project root is the mounted workspace
+      PROJECT_ROOT: /app/workspace
+      ALLOWED_DIRECTORIES: /app/workspace
+      LOG_FILE: /app/logs/agent.log
+      EVENTS_LOG_FILE: /app/logs/agent-events.jsonl
+    working_dir: /app/workspace
+    volumes:
+      - ./:/app/workspace
+      - agent-logs:/app/logs
+      - agent-home:/home/agent
+    stdin_open: true
+    tty: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 2g
+    restart: "no"
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: universal-agent-hub:latest
+    profiles: ["dev"]
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >-
+      sh -lc "pip install -r requirements-dev.txt && pytest -q --no-cov -p no:cacheprovider"
+    environment:
+      OPENAI_API_KEY: "sk-test-key-not-real"
+      MODEL_NAME: "gpt-4o-mini"
+
+  # Full browser automation (Playwright + Chromium) for the browser_* tools.
+  #   docker compose run --rm agent-browser
+  agent-browser:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_BROWSER: "1"
+    image: universal-agent-hub:browser
+    profiles: ["browser"]
+    env_file:
+      - .env
+    environment:
+      PROJECT_ROOT: /app/workspace
+      ALLOWED_DIRECTORIES: /app/workspace
+      BROWSER_HEADLESS: "true"
+    working_dir: /app/workspace
+    volumes:
+      - ./:/app/workspace
+    shm_size: 1gb
+    stdin_open: true
+    tty: true
+
+volumes:
+  agent-logs:
+  agent-home:

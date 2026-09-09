@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Info.plist — Universal Agent Hub (iOS)
+  XcodeGen هم همین مقادیر را از project.yml می‌نویسد؛ این فایل برای بازکردن
+  مستقیم پوشه در Xcode و برای بازبینی دستی نگه داشته شده است.
+-->
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>Agent Hub</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>fa</string>
+    </array>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>HubBackground</string>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIUserInterfaceStyle</key>
+    <string>Automatic</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.agenthub.ios.connect</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>agenthub</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>localhost</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+            </dict>
+            <key>127.0.0.1</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Agent Hub must reach the agent server running on your computer over your local network.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>processing</string>
+    </array>
+</dict>
+</plist>

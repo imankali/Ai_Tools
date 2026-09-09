@@ -1,0 +1,77 @@
+# ---------------------------------------------------------------------------
+# Static analysis for universal-agent-hub: ruff · black · mypy
+# ---------------------------------------------------------------------------
+name: Lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "universal-agent-hub/**"
+      - ".github/workflows/lint.yml"
+  pull_request:
+    paths:
+      - "universal-agent-hub/**"
+      - ".github/workflows/lint.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ${{ tool.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: universal-agent-hub
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+          - name: ruff
+            cmd: python -m ruff check src tests examples scripts setup.py conftest.py
+          - name: black
+            cmd: python -m black --check src tests examples scripts setup.py conftest.py
+          - name: mypy
+            cmd: python -m mypy src scripts/make_icons.py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: universal-agent-hub/requirements-dev.txt
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run ${{ tool.name }}
+        run: ${{ matrix.tool.cmd }}
+
+  docs-and-config:
+    name: docs & packaging metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: universal-agent-hub
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate pyproject / README / example scripts
+        run: |
+          python -m pip install --upgrade pip build twine >/dev/null
+          python -c "import tomllib,pathlib; tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))"
+          test -f README.md && test -f README.fa.md && test -f LICENSE
+          python -m compileall -q examples scripts
+          python -m build --sdist --wheel --outdir /tmp/dist
+          python -m twine check /tmp/dist/*

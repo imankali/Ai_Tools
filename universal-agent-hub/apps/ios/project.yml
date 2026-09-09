@@ -1,0 +1,72 @@
+# Universal Agent Hub — iOS (XcodeGen)
+# ساخت پروژه:  xcodegen generate   سپس  open UniversalAgentHub.xcodeproj
+name: UniversalAgentHub
+options:
+  bundleIdPrefix: com.agenthub
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1,2"          # iPhone + iPad
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGN_STYLE: Automatic
+    # CODE_SIGN_IDENTITY: "Apple Development"   # در Xcode > Signing & Capabilities انتخاب کنید
+    # DEVELOPMENT_TEAM: XXXXXXXXXX
+    INFOPLIST_KEY_CFBundleDisplayName: Agent Hub
+
+targets:
+  UniversalAgentHub:
+    type: application
+    platform: iOS
+    sources:
+      - path: UniversalAgentHub
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.agenthub.ios
+        INFOPLIST_FILE: UniversalAgentHub/Info.plist
+        CODE_SIGN_ENTITLEMENTS: UniversalAgentHub/UniversalAgentHub.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    info:
+      path: UniversalAgentHub/Info.plist
+      properties:
+        CFBundleDisplayName: Agent Hub
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchScreen:
+          UIColorName: HubBackground
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # زبان برنامه: انگلیسی + فارسی (RTL خودکار می‌شود)
+        CFBundleLocalizations:
+          - en
+          - fa
+        # سرور روی LAN معمولاً http است؛ فقط برای شبکه‌ی محلی باز گذاشته می‌شود
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
+            127.0.0.1:
+              NSExceptionAllowsInsecureHTTPLoads: true
+        # درخواست اجازه‌ی اعلان برای «تأیید لازم است»
+        UIBackgroundModes:
+          - processing
+        # لینک عمیق: agenthub://connect?url=…&token=…
+        CFBundleURLTypes:
+          - CFBundleURLName: com.agenthub.ios.connect
+            CFBundleURLSchemes:
+              - agenthub
+        # خواندن کلیپ‌بورد برای چسباندن آدرس/توکن
+        UIPasteboardConfiguration: {}
