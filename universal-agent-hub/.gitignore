@@ -43,6 +43,8 @@ logs/
 # ---------------------------------------------------------------- Runtime
 screenshots/
 *.png
+# آیکون‌های تولیدشده‌ی UI باید در repo بمانند (manifest و apple-touch-icon به‌شان ارجاع می‌دهند)
+!src/server/web/icons/*.png
 !docs/**/*.png
 browser-state/
 playwright-state/
