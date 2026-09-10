@@ -1,0 +1,235 @@
+# ---------------------------------------------------------------------------
+# Universal Agent Hub — packaging, linting, typing and test configuration
+# ---------------------------------------------------------------------------
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-agent-hub"
+version = "1.0.0"
+description = "A modular, safety-guarded AI agent with full (and configurable) system access"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Iman", email = "your.email@example.com" }]
+keywords = [
+    "ai",
+    "agent",
+    "llm",
+    "openai",
+    "automation",
+    "tools",
+    "function-calling",
+    "cli",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "openai>=1.40,<4.0",
+    "pydantic>=2.5,<3.0",
+    "pydantic-settings>=2.1,<3.0",
+    "python-dotenv>=1.0",
+    "rich>=13.0",
+    "aiohttp>=3.9",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+# سیستم‌مانیتورینگ دقیق‌تر
+system = ["psutil>=5.9"]
+# جست‌وجوی وب با کیفیت بالاتر
+search = ["ddgs>=9.0"]
+# اتوماسیون مرورگر (بعد از نصب: playwright install chromium)
+browser = ["playwright>=1.40"]
+# همه‌چیز
+all = ["psutil>=5.9", "ddgs>=9.0", "playwright>=1.40"]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "mypy>=1.8",
+    "ruff>=0.4",
+    "black>=24.0",
+    "psutil>=5.9",
+    "ddgs>=9.0",
+]
+
+[project.scripts]
+agent-hub = "src.cli:main"
+agent-hub-server = "src.server.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/imankali/Ai_Tools"
+Repository = "https://github.com/imankali/Ai_Tools"
+Documentation = "https://github.com/imankali/Ai_Tools/tree/main/universal-agent-hub/docs"
+Issues = "https://github.com/imankali/Ai_Tools/issues"
+
+# NOTE: the package lives in `src/` (as specified by the project layout) and is
+# therefore imported as `src.*`. Keep running from the project root, or use the
+# `PYTHONPATH` / editable install below.
+[tool.setuptools]
+packages = [
+    "src",
+    "src.core",
+    "src.tools",
+    "src.models",
+    "src.utils",
+    "src.server",
+]
+include-package-data = true
+
+[tool.setuptools.package-data]
+src = ["py.typed"]
+# UI موبایل/دسکتاپ داخل بسته می‌آید تا ``pip install`` هم ``agent-hub --serve`` را با UI بالا بیاورد
+"src.server" = [
+    "web/*.html",
+    "web/*.css",
+    "web/*.js",
+    "web/*.svg",
+    "web/*.webmanifest",
+    "web/icons/*.png",
+]
+
+# ---------------------------------------------------------------------------
+# Black
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length = 118
+target-version = ["py310"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.venv
+  | build
+  | dist
+  | node_modules
+)/
+'''
+
+# ---------------------------------------------------------------------------
+# Ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 118
+target-version = "py310"
+src = ["src", "tests", "examples"]
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "W",   # whitespace
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # naming
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "C4",  # comprehensions
+    "SIM", # simplify
+    "ASYNC",
+    "S",   # bandit-style security checks
+    "RET", # return statements
+    "PTH", # use pathlib
+    "RUF",
+]
+ignore = [
+    "E501",   # line length is handled by black
+    # توضیح: بخش زیادی از docstring/کامنت‌ها فارسی است؛ قوانین «کاراکتر مبهم»
+    # حروف عربی را با حروف لاتین اشتباه می‌گیرند و برای این پروژه نویز محض‌اند.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # # type: ignore های این پروژه برای mypy هستند، نه ruff؛ پس RUF100 نباید آن‌ها را حذف کند.
+    "RUF100",
+    "S101",   # assert in tests is fine
+    "S603",   # subprocess with a fixed argv list is the intended design
+    "S607",   # starting a process with a partial path (/bin/sh) is intentional
+    "S104",   # 0.0.0.0 binding is not relevant here
+    "RET504", # verbose but clearer assignments before return
+    "PTH123", # open() is fine and faster than Path.open in hot paths
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S107", "S108", "PLR2004", "N818", "ASYNC240"]
+"examples/**" = ["B008", "E402"]
+"src/tools/terminal.py" = ["S602", "S605", "S607", "S404"]
+"src/tools/system_info.py" = ["S608", "ASYNC240"]
+"src/utils/safety.py" = ["S105"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# ---------------------------------------------------------------------------
+# Mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src"]
+mypy_path = "."
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+disallow_untyped_decorators = false
+disable_error_code = ["import-untyped"]
+show_error_codes = true
+pretty = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+module = ["ddgs.*", "psutil.*", "playwright.*", "dotenv.*", "rich.*", "aiohttp.*", "requests.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "7.4"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers --strict-config --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=80"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: tests that exercise the real filesystem/processes (no network)",
+    "network: tests that require internet access (skipped unless UAGENT_ONLINE=1)",
+    "browser: tests that require Playwright browsers",
+]
+filterwarnings = ["error::DeprecationWarning:src.*"]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = ["src/tools/template.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]

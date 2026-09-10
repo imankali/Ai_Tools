@@ -1,0 +1,26 @@
+{
+  "name": "Universal Agent Hub",
+  "short_name": "Agent Hub",
+  "description": "Control this machine with a local AI agent: chat, tools, approvals, API keys.",
+  "id": "universal-agent-hub",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "en",
+  "dir": "auto",
+  "categories": ["productivity", "utilities", "developer tools"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "New session", "short_name": "New", "url": "./?new=1" },
+    { "name": "API keys", "short_name": "Keys", "url": "./?view=keys" }
+  ]
+}

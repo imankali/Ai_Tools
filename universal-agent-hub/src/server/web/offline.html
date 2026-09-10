@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Hub — offline</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="panel" style="margin: 24px auto; max-width: 560px">
+      <h1 style="font-size: 18px; margin-top: 0">Agent server is not reachable</h1>
+      <p class="muted">
+        The app is only a remote control — nothing runs in the browser. Start the agent on your computer and try again:
+      </p>
+      <pre class="code">agent-hub --serve --lan</pre>
+      <p class="muted">
+        Then open the printed address (for example <span class="mono">http://192.168.1.20:8765</span>) and paste the access token in
+        <em>Settings → Connection</em>.
+      </p>
+      <p class="row"><button class="btn primary" onclick="location.reload()">Retry</button></p>
+    </main>
+  </body>
+</html>

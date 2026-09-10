@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------- Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.installed.cfg
+
+# ------------------------------------------------------------- Virtualenv
+.venv/
+venv/
+env/
+ENV/
+poetry.lock
+
+# ------------------------------------------------------------------ Tests
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# ------------------------------------------------------------------ Config
+.env
+.env.*
+!.env.example
+*.local.toml
+
+# ------------------------------------------------------------------- Logs
+*.log
+agent.log
+agent-events.jsonl
+logs/
+
+# ---------------------------------------------------------------- Runtime
+screenshots/
+*.png
+!docs/**/*.png
+browser-state/
+playwright-state/
+.screenshots/
+sessions/
+agent-session.json
+agent-transcript-*.md
+
+# ---------------------------------------------------------------- Docker
+docker-data/
+
+# ------------------------------------------------------------------- IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ------------------------------------------------------------------ Git
+.gitignore.bak

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  entitlements — فقط دو مورد لازم است:
+  * groups: برای App Groups (اگر بعداً Widget/Shortcut خواستید)
+  * keychain-access-groups: نگه‌داری توکن در Keychain برنامه
+-->
+<plist version="1.0">
+<dict>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.agenthub.ios</string>
+    </array>
+</dict>
+</plist>

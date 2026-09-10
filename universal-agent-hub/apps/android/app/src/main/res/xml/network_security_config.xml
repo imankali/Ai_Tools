@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Universal Agent Hub — سیاست شبکه
+
+  سرور روی شبکه‌ی محلی معمولاً http ساده است (کاربر خودش TLS را با reverse proxy
+  اضافه می‌کند). پس ترافیک بدون رمزنگاری برای میزبان‌های محلی مجاز است و برای
+  بقیه‌ی دامنه‌ها https الزامی است.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- اگر گواهی خودامضای سرور را می‌دانید، فایلش را در res/raw/hub_ca.pem بگذارید و باز کنید:
+    <domain-config>
+        <domain includeSubdomains="true">hub.local</domain>
+        <trust-anchors>
+            <certificates src="@raw/hub_ca" />
+        </trust-anchors>
+    </domain-config>
+    -->
+</network-security-config>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Agent Hub</string>
+    <string name="pair_title">Connect to your computer</string>
+    <string name="pair_server_url">Server URL</string>
+    <string name="pair_server_hint">http://192.168.1.10:8765</string>
+    <string name="pair_token">Access token</string>
+    <string name="pair_token_hint">printed by `agent-hub --serve --lan`</string>
+    <string name="pair_test">Test connection</string>
+    <string name="pair_connect">Connect</string>
+    <string name="pair_paste">Paste</string>
+    <string name="pair_scan_qr">Scan QR</string>
+    <string name="pair_remember">Remember on this device</string>
+    <string name="pair_testing">Checking /healthz …</string>
+    <string name="pair_ok_online">Connected · %1$d tool(s) · agent %2$s</string>
+    <string name="pair_ok_offline">Server answered, but no API key is configured yet</string>
+    <string name="pair_err_refused">Cannot reach the server. Same Wi-Fi? Firewall? `--lan` flag?</string>
+    <string name="pair_err_unauthorized">Wrong token (401). Copy it again from the terminal.</string>
+    <string name="pair_err_badurl">Enter a full URL like http://192.168.1.10:8765</string>
+    <string name="menu_reload">Reload</string>
+    <string name="menu_reconnect">Change server…</string>
+    <string name="menu_open_browser">Open in browser</string>
+    <string name="menu_about">About</string>
+    <string name="menu_language">فارسی / English</string>
+    <string name="about_body">Universal Agent Hub\nThe phone is the remote; the agent runs on your computer with your guardrails.\nNo API key leaves your computer.</string>
+    <string name="offline_title">Agent offline</string>
+    <string name="offline_body">Cannot reach %1$s. Check that the computer is awake and `agent-hub --serve --lan` is running.</string>
+    <string name="offline_retry">Retry</string>
+    <string name="notif_channel_name">Agent approvals</string>
+    <string name="notif_channel_desc">Requests that need your approval</string>
+    <string name="notif_approval_title">Approval needed</string>
+    <string name="notif_running">Agent is working…</string>
+    <string name="progress_loading">Loading the hub…</string>
+    <string name="copied">Copied</string>
+    <string name="pair_subtitle">Enter the address your computer is serving. The model key never leaves that machine.</string>
+    <string name="pair_command_label">On your computer, run:</string>
+    <string name="pair_command_hint">agent-hub --serve --lan\n# then type the token it prints</string>
+    <string name="pair_security_note">Tip: keep the hub on your own Wi-Fi. A token is required for any non-localhost address, and every dangerous action still asks for approval here.</string>
+</resources>

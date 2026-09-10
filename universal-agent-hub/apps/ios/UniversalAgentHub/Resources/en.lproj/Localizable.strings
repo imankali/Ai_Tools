@@ -1,0 +1,29 @@
+/* Universal Agent Hub — رشته‌های انگلیسی */
+
+"app.title" = "Agent Hub";
+"pair.title" = "Connect to your computer";
+"pair.server" = "Server URL";
+"pair.token" = "Access token";
+"pair.token.placeholder" = "printed by `agent-hub --serve --lan`";
+"pair.server.placeholder" = "http://192.168.1.10:8765";
+"pair.test" = "Test connection";
+"pair.connect" = "Connect";
+"pair.remember" = "Remember on this device";
+"pair.testing" = "Checking /api/status …";
+"pair.ok.online" = "Connected · %d tool(s) · %@";
+"pair.ok.offline" = "Server answered, but no model API key is configured yet.";
+"pair.err.url" = "Enter a full address like http://192.168.1.10:8765";
+"pair.err.refused" = "Cannot reach the server. Same Wi-Fi? Firewall? Did you start it with --lan?";
+"pair.err.token" = "Wrong token (401). Copy it again from the terminal.";
+"pair.command" = "On your computer:";
+"pair.security" = "The model API key stays on your computer. This device only stores the hub address and its access token (in the Keychain).";
+"hub.reload" = "Reload";
+"hub.reconnect" = "Change server…";
+"hub.browser" = "Open in Safari";
+"hub.offline" = "Agent offline";
+"hub.offline.body" = "Cannot reach %@. Make sure the computer is awake and the hub is running.";
+"hub.retry" = "Try again";
+"about.body" = "Universal Agent Hub\nThe phone is the remote; the agent runs on your computer with your guardrails.";
+"notif.approval" = "Approval needed";
+"notif.running" = "Agent is working…";
+"hub.about" = "About";

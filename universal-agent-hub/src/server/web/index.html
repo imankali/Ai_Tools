@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1020" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Universal Agent Hub — control your computer with a local AI agent." />
+    <title>Universal Agent Hub</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <noscript><p class="noscript">This app needs JavaScript. Use the REST API or enable JavaScript.</p></noscript>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <span class="brand-text">
+          <strong data-i18n="app_name">Agent Hub</strong>
+          <small id="conn-state" class="conn off" data-i18n="connecting">connecting…</small>
+        </span>
+      </div>
+
+      <div class="topbar-actions">
+        <select id="profile-select" class="select" title="agent profile" aria-label="agent profile"></select>
+        <select id="session-select" class="select narrow" title="session" aria-label="session"></select>
+        <button id="lang-btn" class="icon-btn" title="language" data-i18n-title="lang_title">FA</button>
+        <button id="theme-btn" class="icon-btn" title="theme" data-i18n-title="theme_title">◐</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ============================ CHAT ============================ -->
+      <section id="view-chat" class="view is-active" aria-label="chat">
+        <div id="approvals" class="approvals" aria-live="assertive"></div>
+
+        <div id="messages" class="messages" role="log" aria-live="polite"></div>
+
+        <div id="run-status" class="run-status" hidden>
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="run-status-text">running…</span>
+          <button id="stop-btn" class="btn tiny danger" data-i18n="stop">Stop</button>
+        </div>
+
+        <form id="composer" class="composer" autocomplete="off">
+          <textarea
+            id="prompt"
+            class="prompt"
+            rows="1"
+            maxlength="30000"
+            data-i18n-placeholder="ask_placeholder"
+            placeholder="Ask the agent to do something on this machine…"
+          ></textarea>
+          <button type="submit" id="send-btn" class="btn primary" data-i18n-title="send_title" aria-label="send">➤</button>
+        </form>
+
+        <div class="statusbar">
+          <span id="session-chip" class="chip">session —</span>
+          <span id="model-chip" class="chip">model —</span>
+          <span id="tool-chip" class="chip">tools —</span>
+          <button id="reset-btn" class="btn tiny ghost" data-i18n="reset_context">Reset</button>
+        </div>
+      </section>
+
+      <!-- ============================ TOOLS ============================ -->
+      <section id="view-tools" class="view" aria-label="tools">
+        <div class="toolbar">
+          <input id="tool-search" class="input" type="search" data-i18n-placeholder="search_tools" placeholder="search tools" />
+          <div id="tool-categories" class="chips"></div>
+          <button id="tools-reload" class="btn tiny ghost" data-i18n="reload">Reload</button>
+        </div>
+        <ul id="tool-list" class="tool-list"></ul>
+        <div id="tool-detail" class="panel hidden">
+          <div class="panel-head">
+            <h3 id="tool-detail-name">tool</h3>
+            <button id="tool-detail-close" class="icon-btn" aria-label="close">✕</button>
+          </div>
+          <p id="tool-detail-desc" class="muted"></p>
+          <pre id="tool-detail-schema" class="code"></pre>
+          <label class="field"><span data-i18n="arguments">Arguments (JSON)</span></label>
+          <textarea id="tool-args" class="input code mono" rows="6" spellcheck="false">{}</textarea>
+          <div class="row">
+            <button id="tool-run" class="btn primary" data-i18n="run_tool">Run tool</button>
+            <span id="tool-run-note" class="muted small"></span>
+          </div>
+          <pre id="tool-result" class="code result"></pre>
+        </div>
+      </section>
+
+      <!-- ============================ REPORTS ============================ -->
+      <section id="view-reports" class="view" aria-label="activity reports">
+        <div class="toolbar">
+          <label class="field-inline"><span data-i18n="reports_window">Window</span>
+            <select id="report-days" class="input" aria-label="report window">
+              <option value="1">24h</option>
+              <option value="7" selected>7d</option>
+              <option value="30">30d</option>
+              <option value="0">all</option>
+            </select>
+          </label>
+          <button id="reports-reload" class="btn tiny ghost" data-i18n="reports_refresh">Refresh</button>
+          <button id="reports-note" class="btn tiny" data-i18n="reports_note">Add a note</button>
+          <span id="reports-note-state" class="muted small"></span>
+        </div>
+        <div id="report-stats" class="stat-grid"></div>
+        <h3 class="section-title" data-i18n="reports_next">What it plans next</h3>
+        <ul id="report-next" class="plain-list"></ul>
+        <h3 class="section-title" data-i18n="reports_tools">Busiest tools</h3>
+        <div id="report-tools" class="report-table"></div>
+        <h3 class="section-title" data-i18n="reports_plans">Open plans in memory</h3>
+        <ul id="report-plans" class="plain-list"></ul>
+        <h3 class="section-title" data-i18n="reports_warnings">Warnings</h3>
+        <ul id="report-warnings" class="plain-list"></ul>
+        <pre id="report-text" class="code report-text" dir="auto"></pre>
+      </section>
+
+      <!-- ============================ KEYS ============================ -->
+      <section id="view-keys" class="view" aria-label="api keys">
+        <div class="panel">
+          <div class="panel-head">
+            <h3 data-i18n="keys_title">Model API keys</h3>
+            <button id="keys-import" class="btn tiny ghost" data-i18n="import_env">Import from .env</button>
+          </div>
+          <p class="muted small" data-i18n="keys_help">
+            Keys live on the machine running the agent (never in this app). The app only ever sees a masked form.
+          </p>
+          <ul id="key-list" class="key-list"></ul>
+
+          <form id="key-form" class="grid-2" autocomplete="off">
+            <label class="field">
+              <span data-i18n="key_name">Name</span>
+              <input id="key-name" class="input" required maxlength="40" placeholder="personal" />
+            </label>
+            <label class="field">
+              <span data-i18n="key_profile">Agent profile</span>
+              <select id="key-profile" class="select"></select>
+            </label>
+            <label class="field span-2">
+              <span data-i18n="key_value">API key</span>
+              <input id="key-value" class="input mono" type="password" spellcheck="false" autocomplete="off" placeholder="sk-…" />
+              <small class="muted" data-i18n="key_value_help">Leave empty to keep the stored key.</small>
+            </label>
+            <label class="field">
+              <span data-i18n="key_base">Base URL</span>
+              <input id="key-base" class="input mono" placeholder="https://api.openai.com/v1" />
+            </label>
+            <label class="field">
+              <span data-i18n="key_model">Model</span>
+              <input id="key-model" class="input mono" placeholder="gpt-6-astra" />
+            </label>
+            <label class="field span-2">
+              <span data-i18n="key_fallbacks">Fallback models (comma separated)</span>
+              <input id="key-fallbacks" class="input mono" placeholder="gpt-4o-mini, llama3.1:8b" />
+            </label>
+            <div class="row span-2">
+              <label class="switch"><input id="key-activate" type="checkbox" checked /> <span data-i18n="activate_now">Activate now</span></label>
+              <button type="submit" class="btn primary" data-i18n="save_key">Save key</button>
+              <button type="button" id="key-delete" class="btn danger ghost" data-i18n="delete_key">Delete</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ============================ SETTINGS ============================ -->
+      <section id="view-settings" class="view" aria-label="settings">
+        <div class="panel">
+          <div class="panel-head"><h3 data-i18n="connection">Connection</h3><span id="conn-badge" class="chip">—</span></div>
+          <label class="field">
+            <span data-i18n="server_url">Server URL</span>
+            <input id="server-url" class="input mono" placeholder="http://192.168.1.20:8765" />
+          </label>
+          <label class="field">
+            <span data-i18n="access_token">Access token</span>
+            <input id="access-token" class="input mono" type="password" placeholder="SERVER_TOKEN" />
+          </label>
+          <div class="row">
+            <button id="connect-btn" class="btn primary" data-i18n="reconnect">Reconnect</button>
+            <button id="forget-btn" class="btn ghost" data-i18n="forget">Forget</button>
+          </div>
+          <p class="muted small" data-i18n="connection_help">
+            Only needed when you open this page from another device. The token is stored in this browser only.
+          </p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3 data-i18n="agent_settings">Agent</h3><span id="ready-badge" class="chip">—</span></div>
+          <div class="grid-2">
+            <label class="field"><span data-i18n="temperature">Temperature</span><input id="set-temperature" class="input" type="number" step="0.1" min="0" max="2" /></label>
+            <label class="field"><span data-i18n="max_iterations">Max iterations</span><input id="set-iterations" class="input" type="number" min="1" max="40" /></label>
+            <label class="field span-2"><span data-i18n="model_override">Model override</span><input id="set-model" class="input mono" placeholder="(use server default)" /></label>
+            <label class="field span-2"><span data-i18n="system_note">Extra system note</span><textarea id="set-note" class="input" rows="3"></textarea></label>
+          </div>
+          <label class="switch"><input id="set-confirmation" type="checkbox" /> <span data-i18n="confirmation_mode">Ask before sensitive actions</span></label>
+          <label class="switch"><input id="set-parallel" type="checkbox" /> <span data-i18n="parallel_tools">Run independent tools in parallel</span></label>
+          <div class="row">
+            <button id="settings-save" class="btn primary" data-i18n="apply">Apply</button>
+            <button id="new-session" class="btn ghost" data-i18n="new_session">New session</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3 data-i18n="allowed_tools">Tools allowed for this session</h3><span id="tools-count" class="chip">—</span></div>
+          <div id="tool-picker" class="picker"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3 data-i18n="safety_title">Safety policy</h3></div>
+          <div id="safety-summary" class="kv"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3 data-i18n="server_info">Server</h3></div>
+          <pre id="server-info" class="code"></pre>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tabbar" role="tablist">
+      <button class="tab is-active" data-view="chat" role="tab" data-i18n="tab_chat">Chat</button>
+      <button class="tab" data-view="tools" role="tab" data-i18n="tab_tools">Tools</button>
+      <button class="tab" data-view="reports" role="tab" data-i18n="tab_reports">Reports</button>
+      <button class="tab" data-view="keys" role="tab" data-i18n="tab_keys">Keys</button>
+      <button class="tab" data-view="settings" role="tab" data-i18n="tab_settings">Settings</button>
+    </nav>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
