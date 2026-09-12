@@ -49,7 +49,7 @@ powershell -c "irm https://raw.githubusercontent.com/imankali/Ai_Tools/main/univ
 | | |
 |---|---|
 | **Agent core** | async tool-calling loop with model fallbacks, retries, token accounting, history windowing, event stream |
-| **27 tools** | shell `terminal_run` · files `read_file` `write_file` `list_directory` `search_files` `move_file` `delete_file` · system `os_info` `cpu_info` `memory_info` `disk_info` `network_info` · web `web_search` `search_advanced` `browser_browse` `browser_screenshot` `browser_extract_text` `browser_click` `browser_fill_form` · memory `memory_write` `memory_read` `memory_search` `memory_forget` |
+| **27 tools** | shell `terminal_run` · files `read_file` `write_file` `list_directory` `search_files` `move_file` `delete_file` · system `os_info` `cpu_info` `memory_info` `disk_info` `network_info` · web `web_search` `search_advanced` `browser_browse` `browser_screenshot` `browser_extract_text` `browser_click` `browser_fill_form` · memory `memory_write` `memory_read` `memory_search` `memory_forget` `memory_info` · agent `agent_delegate` `skill_list` `skill_load` `routine_list` (plus any MCP server tool, registered at runtime as `mcp__{server}__{tool}`) |
 | **Safety layer** | `SafetyGuard`: command/path/network risk assessment, allow-lists, deny or confirm policies, redaction of secrets in every log/response |
 | **Human approvals** | every risky action blocks until you approve it — in the CLI, the browser, or a push-style notification on your phone; timeout or disconnect = denied |
 | **Long-term memory** | JSONL memory store (`src/core/memory.py`): preferences, procedures, decisions, open plans — auto-loaded into the prompt, auto-captured after runs |
@@ -57,7 +57,7 @@ powershell -c "irm https://raw.githubusercontent.com/imankali/Ai_Tools/main/univ
 | **Self-extension** | agent-authored tools are loaded from plugin dirs (`AGENT_HUB_TOOL_DIRS`) and writing them needs your approval; feedback is stored in memory (`--remember`) and can be turned into a patch proposal in `proposals/` plus a `make test` run — a human commits, never the agent |
 | **API server** | REST + WebSocket + PWA on aiohttp; token auth, rate limiting, session isolation, API-key profiles (masked, never echoed) |
 | **Apps** | Android WebView shell, iOS SwiftUI shell, `--desktop` window (pywebview) or browser, PWA install anywhere |
-| **Quality** | 1 160+ passing tests, ≥ 91 % coverage, mypy `--strict` + ruff + black clean, CI, Docker, PyInstaller bundles per OS |
+| **Quality** | 1 185 passing tests, 91.7 % coverage, mypy `--strict` + ruff + black clean, CI, Docker, PyInstaller bundles per OS |
 
 ### Agent-OS layer
 
