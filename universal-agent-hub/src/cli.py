@@ -1035,8 +1035,230 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--pin", action="store_true", help="with --remember: protect the note from pruning")
     parser.add_argument("--verbose", "-v", action="count", default=0, help="more logging (-v debug)")
+    # ------------------------------------------------------------------
+    # Agent-OS: روتین‌ها، اعلان‌ها، skillها، بکاپ و سلامت
+    # ------------------------------------------------------------------
+    parser.add_argument("--routines", action="store_true", help="list scheduled routines and exit")
+    parser.add_argument("--schedule", default=None, metavar="NAME", help="create/update a routine with this name")
+    parser.add_argument("--cron", default=None, metavar="EXPR", help="with --schedule: cron expression (5 fields)")
+    parser.add_argument(
+        "--every", type=float, default=None, metavar="SEC", help="with --schedule: run every N seconds"
+    )
+    parser.add_argument(
+        "--webhook", default=None, metavar="TOKEN", help="with --schedule: trigger by POST /hooks/TOKEN"
+    )
+    parser.add_argument("--unschedule", default=None, metavar="NAME", help="delete the routine with this name")
+    parser.add_argument("--notifications", action="store_true", help="show the notification feed and exit")
+    parser.add_argument("--clear-notifications", action="store_true", help="with --notifications: delete read ones")
+    parser.add_argument("--skills", action="store_true", help="list installed skill packs and exit")
+    parser.add_argument("--backups", action="store_true", help="list backups and exit")
+    parser.add_argument("--backup", action="store_true", help="create a backup of agent state and exit")
+    parser.add_argument("--diagnostics", action="store_true", help="deep health check of every subsystem and exit")
     parser.add_argument("--version", action="store_true", help="print version and exit")
     return parser
+
+
+# ---------------------------------------------------------------------------
+# Agent-OS: پیاده‌سازی دستورهای CLI
+# ---------------------------------------------------------------------------
+def _hub_for(config: Any) -> Any:
+    """یک :class:`ServiceHub` می‌سازد (سبک؛ بدون شبکه و بدون حلقه)."""
+    from src.core.services import ServiceHub
+
+    return ServiceHub(config)
+
+
+def run_routines(config: Any) -> int:
+    """``--routines``: فهرست روتین‌ها."""
+    info = _hub_for(config).scheduler.describe()
+    if not info["count"]:
+        print("no routines defined — create one with: agent-hub --schedule nightly --cron '0 22 * * *' --prompt '…'")
+        return 0
+    stats = info["stats"]
+    print(
+        f"scheduler running: {info['running']} · ticks={stats['ticks']} fired={stats['fired']} errors={stats['errors']}"
+    )
+    print()
+    for routine in info["routines"]:
+        state = "on " if routine["enabled"] else "off"
+        upcoming = routine.get("next_run_in_s")
+        when = f"next in {upcoming:.0f}s" if isinstance(upcoming, (int, float)) else "on demand"
+        print(
+            f"[{state}] {routine['name']:<24} {routine['trigger']:<8} {routine['expression']:<16} runs={routine['run_count']:<4} {when}"
+        )
+    return 0
+
+
+def run_schedule(config: Any, args: Any) -> int:
+    """``--schedule NAME``: ساخت/به‌روزرسانی یک روتین."""
+    from src.core.routines import Routine, TriggerKind
+
+    prompt = str(args.prompt or "").strip()
+    if args.cron:
+        trigger, expression = TriggerKind.CRON, str(args.cron)
+    elif args.every:
+        trigger, expression = TriggerKind.INTERVAL, str(float(args.every))
+    elif args.webhook:
+        trigger, expression = TriggerKind.WEBHOOK, str(args.webhook)
+    else:
+        print("error: --schedule needs one of --cron EXPR, --every SEC or --webhook TOKEN")
+        return 2
+    if not prompt:
+        print("error: --schedule needs --prompt 'what should the agent do?'")
+        return 2
+    scheduler = _hub_for(config).scheduler
+    existing = scheduler.find_by_name(str(args.schedule))
+    try:
+        if existing is not None:
+            routine = scheduler.update(
+                existing.id, trigger=trigger, expression=expression, prompt=prompt, profile=args.profile, enabled=True
+            )
+            print(f"updated routine '{routine.name}' → {trigger.value} '{expression}'")
+        else:
+            routine = scheduler.add(
+                Routine(
+                    name=str(args.schedule),
+                    trigger=trigger,
+                    expression=expression,
+                    prompt=prompt,
+                    profile=args.profile,
+                )
+            )
+            print(f"created routine '{routine.name}' → {trigger.value} '{expression}'")
+            if trigger is TriggerKind.WEBHOOK:
+                print(f"trigger it with: curl -X POST http://HOST:PORT/hooks/{expression}")
+    except ValueError as exc:
+        print(f"error: {exc}")
+        return 2
+    return 0
+
+
+def run_unschedule(config: Any, name: str) -> int:
+    """``--unschedule NAME``."""
+    scheduler = _hub_for(config).scheduler
+    routine = scheduler.find_by_name(name)
+    if routine is None:
+        print(f"no routine named '{name}'")
+        return 1
+    scheduler.remove(routine.id)
+    print(f"removed routine '{name}'")
+    return 0
+
+
+def run_notifications(config: Any, *, clear: bool = False) -> int:
+    """``--notifications``."""
+    hub = _hub_for(config)
+    if hub.notifications is None:
+        print("notifications are disabled (NOTIFICATIONS_ENABLED=false)")
+        return 0
+    if clear:
+        print(f"cleared {hub.notifications.clear(read_only=True)} read notification(s)")
+        return 0
+    items = hub.notifications.list(limit=30)
+    if not items:
+        print("no notifications")
+        return 0
+    for note in items:
+        mark = " " if note.read else "•"
+        print(f"{mark} [{note.severity.value:<8}] {note.ts[:19]}  {note.title}")
+        if note.body:
+            print(f"    {note.body[:160]}")
+    print(f"\n{hub.notifications.unread_count()} unread")
+    return 0
+
+
+def run_skills(config: Any) -> int:
+    """``--skills``."""
+    info = _hub_for(config).skills.describe()
+    if not info["count"]:
+        print(f"no skills installed — drop a SKILL.md into: {', '.join(info['directories'])}")
+        return 0
+    print(f"{info['enabled']}/{info['count']} enabled · dirs: {', '.join(info['directories'])}")
+    for skill in info["skills"]:
+        state = "on " if skill["enabled"] else "off"
+        tools = f" [{', '.join(skill['allowed_tools'])}]" if skill["allowed_tools"] else ""
+        print(f"[{state}] {skill['name']:<28} v{skill['version']:<8} {skill['description']}{tools}")
+    if info["errors"]:
+        print(f"\n{len(info['errors'])} file(s) could not be loaded")
+    return 0
+
+
+def run_backups(config: Any, *, create: bool = False) -> int:
+    """``--backups`` / ``--backup``."""
+    hub = _hub_for(config)
+    if create:
+        try:
+            info = hub.backup.create(note="created from CLI")
+        except (ValueError, RuntimeError) as exc:
+            print(f"error: {exc}")
+            return 1
+        print(f"created backup '{info.name}' ({info.human_size}) at {info.path}")
+        return 0
+    info = hub.backup.describe()
+    if not info["count"]:
+        print(f"no backups — create one with: agent-hub --backup   (dir: {info['directory']})")
+        return 0
+    print(f"{info['count']} backup(s), {info['human_total']} total · keep={info['keep']}")
+    for item in info["backups"]:
+        verdict = hub.backup.test(item["name"])
+        flag = "ok " if verdict["ok"] else "BAD"
+        print(f"[{flag}] {item['name']:<34} {item['human_size']:>10}  {item['created_at']}  {item['note']}")
+    return 0
+
+
+def run_diagnostics(config: Any, *, as_json: bool = False) -> int:
+    """``--diagnostics``: سلامت یکپارچه."""
+    import json as _json
+
+    info = _hub_for(config).diagnostics()
+    if as_json:
+        print(_json.dumps(info, ensure_ascii=False, indent=2, default=str))
+        return 0
+    chain = info["audit"]["chain"]
+    rows = [
+        (
+            "audit chain",
+            "ok" if chain["ok"] else f"BROKEN at {chain.get('broken_at')}",
+            f"{chain['entries']} entries",
+        ),
+        ("audit entries", str(info["audit"].get("entries", 0)), info["audit"].get("path", "")),
+        ("notifications", str(info["notifications"]["total"]), f"{info['notifications']['unread']} unread"),
+        (
+            "scheduler",
+            "running" if info["scheduler"]["running"] else "stopped",
+            f"{info['scheduler']['count']} routine(s)",
+        ),
+        (
+            "heartbeat",
+            "running" if info["heartbeat"]["running"] else "stopped",
+            f"{info['heartbeat']['ticks']} tick(s)",
+        ),
+        ("watchdog", f"{len(info['watchdog']['active'])} active", f"{info['watchdog']['expired_total']} expired"),
+        ("skills", str(info["skills"]["count"]), f"{info['skills']['enabled']} enabled"),
+        ("subagents", f"depth<={info['subagents']['max_depth']}", f"{len(info['subagents']['history'])} past run(s)"),
+        ("backups", str(info["backup"]["count"]), info["backup"]["human_total"]),
+        (
+            "MCP servers",
+            str(len(info["mcp"]["servers"])),
+            "{} remote tool(s), {} registered".format(
+                sum(len(server["tools"]) for server in info["mcp"]["servers"]),
+                len(info["mcp"]["registered_tools"]),
+            ),
+        ),
+        (
+            "injection rules",
+            str(info["security"]["injection_rules"]),
+            f"min severity: {info['security']['injection_min_severity']}",
+        ),
+        ("leak sources", str(info["security"]["leak_sources"]), "known secrets watched"),
+    ]
+    width = max(len(name) for name, _, _ in rows)
+    for name, value, detail in rows:
+        print(f"{name:<{width}}  {value:<18} {detail}")
+    print("\nstate files:")
+    for name, path in info["state_files"].items():
+        print(f"  {name:<14} {path}")
+    return 0
 
 
 def _local_addresses() -> list[str]:
@@ -1241,6 +1463,20 @@ def main(argv: list[str] | None = None) -> int:
         config = config.model_copy(update={"enable_confirmation": False})
     setup_logging(config.log_level, config.resolved_log_file, rich_console=config.rich_console)
 
+    if args.routines:
+        return run_routines(config)
+    if args.schedule:
+        return run_schedule(config, args)
+    if args.unschedule:
+        return run_unschedule(config, str(args.unschedule))
+    if args.notifications or args.clear_notifications:
+        return run_notifications(config, clear=bool(args.clear_notifications))
+    if args.skills:
+        return run_skills(config)
+    if args.backups or args.backup:
+        return run_backups(config, create=bool(args.backup))
+    if args.diagnostics:
+        return run_diagnostics(config, as_json=bool(args.json))
     if args.doctor:
         return run_doctor(config)
     if args.report:

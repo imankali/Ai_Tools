@@ -50,6 +50,7 @@ BUILTIN_TOOL_MODULES: tuple[str, ...] = (
     "web_search",
     "system_info",
     "memory",
+    "agents",
 )
 
 
@@ -411,14 +412,31 @@ class ToolRegistry:
         bus: Any = None,
         confirm: Callable[..., Any] | None = None,
         session: dict[str, Any] | None = None,
+        skills: Any = None,
+        subagents: Any = None,
+        scheduler: Any = None,
+        notifications: Any = None,
+        audit: Any = None,
+        mcp: Any = None,
     ) -> ToolContext:
-        """ساخت :class:`ToolContext` با پیش‌فرض‌های امن."""
+        """ساخت :class:`ToolContext` با پیش‌فرض‌های امن.
+
+        سرویس‌های اختیاری (skills/subagents/scheduler/notifications/audit/mcp)
+        اگر ``None`` بمانند، ابزارهای مربوطه به‌جای خطا، پاسخ «فعال نیست»
+        می‌دهند — پس کد قدیمی بدون تغییر کار می‌کند.
+        """
         return ToolContext(
             config=config if config is not None else cls._default_config,
             safety=safety,
             bus=bus,
             confirm=confirm,
             session=session or {},
+            skills=skills,
+            subagents=subagents,
+            scheduler=scheduler,
+            notifications=notifications,
+            audit=audit,
+            mcp=mcp,
         )
 
     @classmethod

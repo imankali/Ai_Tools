@@ -83,6 +83,15 @@ class ToolContext:
         bus: ایونت‌باس پروژه.
         confirm: callback تأیید کاربر (ممکن است None باشد).
         session: دیکشنری مشترک برای caching در طول یک اجرا (مثلاً session مرورگر).
+        skills: کتابخانه‌ی skillها (:class:`~src.core.skills.SkillLibrary`) — اختیاری.
+        subagents: استخر تفویض (:class:`~src.core.subagents.SubagentPool`) — اختیاری.
+        scheduler: زمان‌بند روتین‌ها (:class:`~src.core.routines.RoutineScheduler`) — اختیاری.
+        notifications: مرکز اعلان‌ها (:class:`~src.core.notifications.NotificationCenter`) — اختیاری.
+        audit: لاگ ممیزی (:class:`~src.core.audit.AuditLog`) — اختیاری.
+        mcp: مدیر سرورهای MCP — اختیاری.
+
+    همه‌ی سرویس‌های جدید اختیاری‌اند و پیش‌فرض ``None``: ابزارهایی که به آن‌ها
+    نیاز ندارند (یعنی همه‌ی ابزارهای قدیمی) بدون تغییر کار می‌کنند.
     """
 
     config: Any = None
@@ -90,6 +99,12 @@ class ToolContext:
     bus: Any = None
     confirm: ConfirmationCallback | None = None
     session: dict[str, Any] = field(default_factory=dict)
+    skills: Any = None
+    subagents: Any = None
+    scheduler: Any = None
+    notifications: Any = None
+    audit: Any = None
+    mcp: Any = None
 
     @property
     def max_output_chars(self) -> int:

@@ -49,7 +49,7 @@ powershell -c "irm https://raw.githubusercontent.com/imankali/Ai_Tools/main/univ
 | | |
 |---|---|
 | **Agent core** | async tool-calling loop with model fallbacks, retries, token accounting, history windowing, event stream |
-| **23 tools** | shell `terminal_run` · files `read_file` `write_file` `list_directory` `search_files` `move_file` `delete_file` · system `os_info` `cpu_info` `memory_info` `disk_info` `network_info` · web `web_search` `search_advanced` `browser_browse` `browser_screenshot` `browser_extract_text` `browser_click` `browser_fill_form` · memory `memory_write` `memory_read` `memory_search` `memory_forget` |
+| **27 tools** | shell `terminal_run` · files `read_file` `write_file` `list_directory` `search_files` `move_file` `delete_file` · system `os_info` `cpu_info` `memory_info` `disk_info` `network_info` · web `web_search` `search_advanced` `browser_browse` `browser_screenshot` `browser_extract_text` `browser_click` `browser_fill_form` · memory `memory_write` `memory_read` `memory_search` `memory_forget` |
 | **Safety layer** | `SafetyGuard`: command/path/network risk assessment, allow-lists, deny or confirm policies, redaction of secrets in every log/response |
 | **Human approvals** | every risky action blocks until you approve it — in the CLI, the browser, or a push-style notification on your phone; timeout or disconnect = denied |
 | **Long-term memory** | JSONL memory store (`src/core/memory.py`): preferences, procedures, decisions, open plans — auto-loaded into the prompt, auto-captured after runs |
@@ -57,7 +57,28 @@ powershell -c "irm https://raw.githubusercontent.com/imankali/Ai_Tools/main/univ
 | **Self-extension** | agent-authored tools are loaded from plugin dirs (`AGENT_HUB_TOOL_DIRS`) and writing them needs your approval; feedback is stored in memory (`--remember`) and can be turned into a patch proposal in `proposals/` plus a `make test` run — a human commits, never the agent |
 | **API server** | REST + WebSocket + PWA on aiohttp; token auth, rate limiting, session isolation, API-key profiles (masked, never echoed) |
 | **Apps** | Android WebView shell, iOS SwiftUI shell, `--desktop` window (pywebview) or browser, PWA install anywhere |
-| **Quality** | 801 passing tests, ≥ 92 % coverage, mypy + ruff + black clean, CI, Docker, PyInstaller bundles per OS |
+| **Quality** | 1 160+ passing tests, ≥ 91 % coverage, mypy `--strict` + ruff + black clean, CI, Docker, PyInstaller bundles per OS |
+
+### Agent-OS layer
+
+Everything below was added after a feature audit against [`openclaw/openclaw`](https://github.com/openclaw/openclaw),
+[`agent0ai/agent-zero`](https://github.com/agent0ai/agent-zero) and [`nearai/ironclaw`](https://github.com/nearai/ironclaw) —
+see [`docs/gap-analysis.md`](docs/gap-analysis.md) for the full register.
+
+| | |
+|---|---|
+| **Routines** | cron / interval / one-shot / webhook / event triggers (`src/core/routines.py`): the agent can act without being asked. Stdlib cron parser, per-routine backoff, run history, never fires twice concurrently |
+| **Notification center** | persistent feed with severities, read/unread, EventBus bridge and an optional webhook sink — so the agent can *tell* you something, not only ask you |
+| **MCP client** | Model Context Protocol over stdio **and** streamable HTTP; remote tools surface as first-class tools (`mcp__server__tool`) and every call still passes the guard |
+| **Skills** | portable `SKILL.md` packs (YAML frontmatter + markdown procedure), scanned, scoped by `allowed_tools`, and rejected if the injection scanner flags them |
+| **Hybrid memory search** | dependency-free hashed char-n-gram vectors + cosine + **Reciprocal Rank Fusion** over the existing keyword scorer; Persian/Arabic letter folding included |
+| **Sub-agents** | bounded delegation (`agent_delegate`) with max depth, max concurrency and inherited guard — recursion bombs are refused, not discovered |
+| **Backups** | `create` / `inspect` / `preview` (dry-run) / `restore` / `test` over a sha256 manifest; refuses to clobber without `confirm: true` and takes a safety snapshot first |
+| **Tamper-evident audit log** | append-only JSONL with a hash chain — `verify_chain()` pinpoints the exact entry that was edited, removed or corrupted |
+| **Injection defence** | 19-rule scanner (English **and** Persian) over untrusted content, control-token stripping, and `<untrusted_content>` fencing |
+| **Leak detection** | scans outbound text for *your actual secrets* (from env/keystore), not just generic key shapes, and redacts them |
+| **Endpoint allowlist** | fail-closed HTTP destination policy (`deny-all` when empty, `*` only when explicit) |
+| **Heartbeat & watchdog** | periodic health checks (disk, audit-chain integrity) and a watchdog that releases runs which outlive their deadline |
 
 ## CLI
 
@@ -72,6 +93,14 @@ agent-hub --serve --desktop                   # native window (pywebview) or the
 agent-hub --doctor                            # environment, keys, tools, port and memory self-check
 agent-hub --report                            # what it did, what it plans next, what it cost
 agent-hub --remember "prefers concise Persian answers"   # write straight into long-term memory
+
+agent-hub --schedule nightly --cron "0 22 * * *" --prompt "summarise today"   # a routine
+agent-hub --schedule deploy-hook --webhook deploy --prompt "run the checklist"
+agent-hub --routines                                     # what is scheduled, and when it next fires
+agent-hub --notifications                                # the feed the agent left you
+agent-hub --skills                                       # installed SKILL.md packs
+agent-hub --backup && agent-hub --backups                # snapshot agent state / verify backups
+agent-hub --diagnostics                                  # deep health: audit chain, watchdog, MCP, …
 ```
 
 Inside the chat: `/tools`, `/schema <tool>`, `/config`, `/safety`, `/model`, `/profile`,
@@ -159,6 +188,8 @@ hardening checklist: [`docs/security.md`](docs/security.md) and
 | [`docs/autonomy.md`](docs/autonomy.md) | memory, planning, reports, self-extension, autonomy levels |
 | [`docs/adding_tools.md`](docs/adding_tools.md) | write a tool in 20 minutes, test it, ship it |
 | [`docs/api_reference.md`](docs/api_reference.md) | public classes and functions |
+| [`docs/agent-os.md`](docs/agent-os.md) | routines, notifications, skills, MCP, sub-agents, backups, audit, heartbeat |
+| [`docs/gap-analysis.md`](docs/gap-analysis.md) | feature audit vs. OpenClaw / Agent-Zero / IronClaw |
 | [`examples/`](examples) | runnable scripts (`python examples/01_quickstart.py`) |
 
 ## Development

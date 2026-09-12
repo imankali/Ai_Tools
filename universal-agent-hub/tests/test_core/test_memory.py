@@ -41,6 +41,104 @@ def store(tmp_path: Path, **kwargs: Any) -> AgentMemory:
 # ---------------------------------------------------------------------------
 # نوشتن و dedupe
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# جست‌وجوی برداری / ترکیبی (G05)
+# ---------------------------------------------------------------------------
+def test_search_mode_keyword_is_unchanged_default(tmp_path: Path) -> None:
+    """``mode`` پیش‌فرض ``keyword`` است؛ رفتار قبلی نباید عوض شود."""
+    memory = store(tmp_path)
+    memory.add("deploy runs scripts/deploy.sh on prod1", kind="procedure")
+    memory.add("prefers concise Persian answers", kind="preference")
+
+    assert [r.content for r in memory.search("deploy", limit=5)] == [
+        r.content for r in memory.search("deploy", limit=5, mode="keyword")
+    ]
+
+
+def test_search_mode_unknown_falls_back_to_keyword(tmp_path: Path) -> None:
+    """مقدار ناشناخته ⇒ ``keyword``؛ هرگز استثنا، هرگز رفتار بی‌صدا متفاوت."""
+    memory = store(tmp_path)
+    memory.add("deploy runs scripts/deploy.sh on prod1", kind="procedure")
+    assert [r.id for r in memory.search("deploy", mode="nonsense")] == [
+        r.id for r in memory.search("deploy", mode="keyword")
+    ]
+
+
+def test_hybrid_ranks_semantic_match_first(tmp_path: Path) -> None:
+    """hybrid باید رکورد مرتبط را *اول* بیاورد، جایی که keyword اشتباه رتبه می‌دهد.
+
+    این کلِ دلیلِ وجودِ کانال برداری است. توجه: ``MemoryRecord.score`` تازگی را
+    هم جمع می‌کند، پس رکوردهای تازه حتی با «صفر» واژه‌ی مشترک امتیاز بالایی
+    می‌گیرند و keyword آن‌ها را بالا می‌آورد. کانال لغویِ RRF عمداً از
+    ``_lexical_overlap`` ساخته می‌شود نه از ``score`` — وگرنه hybrid از vector
+    بدتر می‌شد (این با آزمون دستی روی همین داده‌ها دیده و اصلاح شد).
+    """
+    memory = store(tmp_path)
+    memory.add("database migration checklist for the webshop", kind="procedure")
+    memory.add("prefers concise Persian answers", kind="preference")
+    memory.add("the webshop runs on prod1 and prod2", kind="procedure")
+    memory.add("rotate staging credentials every week", kind="procedure")
+    memory.add("nightly report is emailed to the team", kind="note")
+
+    query = "migrations of databases"
+    top = {mode: memory.search(query, limit=2, mode=mode)[0].content for mode in ("keyword", "vector", "hybrid")}
+
+    assert top["hybrid"] == "database migration checklist for the webshop"
+    assert top["vector"] == "database migration checklist for the webshop"
+    assert top["keyword"] != top["hybrid"]  # کانال برداری واقعاً چیزی اضافه کرده است
+
+
+def test_hybrid_beats_vector_when_words_do_match(tmp_path: Path) -> None:
+    """وقتی واژه‌ها *دقیقاً* می‌خورند، hybrid باید همان را نگه دارد.
+
+    محافظت در برابر جهتِ خطای دیگر: اگر وزن کانال لغوی صفر بود، hybrid
+    در ساده‌ترین حالت هم نتیجه‌ی درست را از دست می‌داد.
+    """
+    memory = store(tmp_path)
+    memory.add("database migration checklist for the webshop", kind="procedure")
+    memory.add("prefers concise Persian answers", kind="preference")
+    memory.add("rotate staging credentials every week", kind="procedure")
+
+    query = "database migration checklist"
+    expected = "database migration checklist for the webshop"
+    assert memory.search(query, limit=1, mode="keyword")[0].content == expected
+    assert memory.search(query, limit=1, mode="hybrid")[0].content == expected
+
+
+def test_vector_index_invalidates_after_forget(tmp_path: Path) -> None:
+    """رگرسیون: کش شاخص برداری نباید بعد از حذف رکورد کهنه بماند.
+
+    کش با مقایسه‌ی «مجموعه‌ی idها» باطل می‌شود، نه با شمارنده‌ی mutation —
+    چون رکوردها از چند مسیر (add/forget/import/prune) تغییر می‌کنند.
+    """
+    memory = store(tmp_path)
+    keep = memory.add("database backup job runs every night on prod1", kind="procedure")
+    drop = memory.add("rotate the staging database password weekly", kind="procedure")
+
+    assert memory.search("database password", mode="vector", limit=2)[0].id == drop.id
+
+    memory.forget(drop.id)
+    results = memory.search("database password", mode="vector", limit=2)
+    # اگر کش کهنه بماند، ``drop`` همچنان برمی‌گردد (و بعد KeyError می‌دهد).
+    assert [r.id for r in results] == [keep.id]
+
+    # و جهتِ مقابل: وقتی هیچ رکورد مرتبطی نمانده، vector به‌درستی خالی می‌دهد —
+    # برخلاف keyword که با recency رکورد بی‌ربط را بالا می‌آورد.
+    memory.forget(keep.id)
+    assert memory.search("zebra quarantine", mode="vector", limit=2) == []
+
+
+def test_hybrid_respects_kinds_filter(tmp_path: Path) -> None:
+    """فیلتر ``kinds`` در هر سه حالت باید یکسان عمل کند."""
+    memory = store(tmp_path)
+    memory.add("database migration checklist", kind="procedure")
+    memory.add("database password rotation preference", kind="preference")
+
+    for mode in ("keyword", "vector", "hybrid"):
+        results = memory.search("database", kinds=["preference"], mode=mode, limit=5)
+        assert results and all(r.kind == "preference" for r in results), mode
+
+
 def test_add_returns_record_and_persists(tmp_path: Path) -> None:
     """رکورد نوشته و روی دیسک می‌ماند (حالت فایل امن)."""
     memory = store(tmp_path)

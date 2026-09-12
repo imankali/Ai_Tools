@@ -226,3 +226,32 @@ class TestProfiles:
         other.write_text("name: x", encoding="utf-8")
         with pytest.raises(ValueError, match="Unsupported"):
             load_profile_file(other)
+
+
+def test_comma_list_fields_are_registered() -> None:
+    """هر فیلد ``CommaList`` باید در ``_COMMA_LIST_FIELDS`` باشد.
+
+    رگرسیونِ یک باگ واقعی: فیلد تازه‌ی ``CommaList`` به validator تجزیه‌کننده‌ی
+    ویرگول اضافه نشده بود و مقدار ``.env`` به‌شکل رشته به pydantic می‌رسید.
+    mypy این را نمی‌گیرد، پس اینجا با پارس خودِ سورس بررسی می‌شود.
+    """
+    import ast
+    import pathlib
+
+    from src.config import _COMMA_LIST_FIELDS
+
+    source = pathlib.Path("src/config.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    config_class = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "Config")
+    declared = {
+        target.id
+        for stmt in config_class.body
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)
+        for target in [stmt.target]
+        if isinstance(stmt.annotation, ast.Name) and stmt.annotation.id == "CommaList"
+    }
+    assert declared, "no CommaList fields found — the parser is broken, not the config"
+    missing = declared - set(_COMMA_LIST_FIELDS)
+    assert not missing, f"CommaList field(s) missing from _COMMA_LIST_FIELDS: {sorted(missing)}"
+    stale = set(_COMMA_LIST_FIELDS) - declared
+    assert not stale, f"_COMMA_LIST_FIELDS lists fields that are not CommaList: {sorted(stale)}"

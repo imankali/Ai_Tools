@@ -37,6 +37,7 @@ from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from src.core.vector_store import VectorIndex
 from src.utils.helpers import redact_secrets, truncate_text
 from src.utils.logger import get_logger
 
@@ -102,6 +103,34 @@ _STOPWORDS: frozenset[str] = frozenset(
 )
 
 _TOKEN_RE = re.compile(r"[a-z0-9_./:-]{2,}|[\u0600-\u06FF]{2,}", re.IGNORECASE)
+
+#: حالت‌های مجاز :meth:`AgentMemory.search`. مقدار ناشناخته ⇒ ``keyword``
+#: (fail-safe: هرگز رفتار قبلی را بی‌صدا عوض نکن).
+_SEARCH_MODES = frozenset({"keyword", "vector", "hybrid"})
+
+#: آستانه‌ی امتیاز کلیدواژه؛ زیر این یعنی «واژه‌ی مشترک معناداری نبود».
+_KEYWORD_MIN_SCORE = 0.9
+
+
+def _lexical_overlap(query_tokens: set[str], record: MemoryRecord) -> float:
+    """کسرِ واژه‌های پرس‌وجو که در رکورد حاضرند (۰..۱).
+
+    عمداً جدا از :meth:`MemoryRecord.score` است: آن متد برای *نمایش* طراحی شده
+    (تازگی و pin و hits هم در آن هست) و برای یک کانال رتبه‌بندی لغوی مناسب نیست.
+    """
+    if not query_tokens:
+        return 0.0
+    record_tokens = _tokens(record.content) | {tag.lower() for tag in record.tags}
+    return len(query_tokens & record_tokens) / len(query_tokens)
+
+
+def _searchable_text(record: MemoryRecord) -> str:
+    """متنی که شاخص برداری روی آن ساخته می‌شود.
+
+    برچسب‌ها و نوع هم وارد می‌شوند: در حافظه‌ی این پروژه برچسب‌ها
+    (``project:webshop``) بخشی از معنا هستند، نه متادیتای تزئینی.
+    """
+    return " ".join((record.content, record.kind, " ".join(record.tags))).strip()
 
 
 def _tokens(text: str) -> set[str]:
@@ -199,6 +228,10 @@ class AgentMemory:
         self._records: list[MemoryRecord] = []
         self._by_sha: dict[str, MemoryRecord] = {}
         self._lock = threading.RLock()
+        # کش شاخص برداری؛ با مقایسه‌ی مجموعه‌ی idها باطل می‌شود (نه با شمارنده)،
+        # چون رکوردها از چند مسیر مختلف تغییر می‌کنند.
+        self._vector_index_cache: VectorIndex | None = None
+        self._vector_ids: set[str] | None = None
         if self.enabled and self.path is not None:
             self._load()
 
@@ -380,21 +413,79 @@ class AgentMemory:
         items = [item for item in self._records if wanted is None or item.kind in wanted]
         return sorted(items, key=lambda item: item.updated_at, reverse=True)
 
-    def search(self, query: str, *, kinds: Iterable[str] | None = None, limit: int = 8) -> list[MemoryRecord]:
-        """جست‌وجوی رتبه‌بندی‌شده (تطبیق واژه + تازگی + pin + دفعات استفاده).
+    # ------------------------------------------------------------------ جست‌وجو
+    def _vector_index(self, pool: Sequence[MemoryRecord]) -> VectorIndex:
+        """شاخص برداری تنبل (lazy) روی ``pool``.
+
+        چرا تنبل و چرا بازساخت بر پایه‌ی «مجموعه‌ی id»؟
+        چون رکوردها از راه‌های مختلف عوض می‌شوند (add/forget/import/prune) و اگر
+        شمارنده‌ی version را در هر مسیر mutation نگه داریم، یک مسیر فراموش‌شده
+        یعنی نتیجه‌ی جست‌وجوی بی‌صدا کهنه. مقایسه‌ی مجموعه‌ی idها O(n) است با
+        n ≤ ``max_records`` و هیچ حالت کهنه‌ای باقی نمی‌گذارد.
+        """
+        ids = {item.id for item in pool}
+        if self._vector_ids is None or self._vector_ids != ids:
+            index = VectorIndex()
+            index.add_many((item.id, _searchable_text(item)) for item in pool)
+            self._vector_index_cache = index
+            self._vector_ids = ids
+        return self._vector_index_cache if self._vector_index_cache is not None else VectorIndex()
+
+    def search(
+        self,
+        query: str,
+        *,
+        kinds: Iterable[str] | None = None,
+        limit: int = 8,
+        mode: str = "keyword",
+    ) -> list[MemoryRecord]:
+        """جست‌وجوی رتبه‌بندی‌شده.
+
+        Args:
+            query: متن پرس‌وجو.
+            kinds: فیلتر نوع رکورد.
+            limit: سقف نتیجه.
+            mode: ``"keyword"`` (پیش‌فرض — تطبیق واژه، بدون تغییر رفتار قبلی)،
+                ``"vector"`` (شباهت n-gram هَش‌شده) یا ``"hybrid"`` (ترکیب هر دو
+                با Reciprocal Rank Fusion). مقدار ناشناخته ⇒ ``"keyword"``.
 
         Returns:
             رکوردها به ترتیب امتیاز نزولی؛ اگر query خالی باشد ``recent``.
+
+        Note:
+            ``mode="hybrid"`` تنها حالتی است که «هم‌معنی بدون واژه‌ی مشترک» را
+            پیدا می‌کند؛ ``keyword`` به تنهایی پرس‌وجوی «چه چیزی برای صبحانه
+            دوست دارم» را به یادداشت «عاشق نیمرو هستم» وصل نمی‌کند.
         """
-        tokens = _tokens(query or "")
         wanted = {str(kind).lower() for kind in kinds} if kinds else None
         pool = [item for item in self._records if wanted is None or item.kind in wanted]
+        cap = max(1, int(limit))
+        tokens = _tokens(query or "")
         if not tokens:
-            return sorted(pool, key=lambda item: item.updated_at, reverse=True)[: max(1, int(limit))]
-        scored = [(item.score(tokens), item) for item in pool]
-        scored = [pair for pair in scored if pair[0] > 0.9]
-        scored.sort(key=lambda pair: pair[0], reverse=True)
-        return [item for _, item in scored[: max(1, int(limit))]]
+            return sorted(pool, key=lambda item: item.updated_at, reverse=True)[:cap]
+
+        resolved = mode if mode in _SEARCH_MODES else "keyword"
+        by_id = {item.id: item for item in pool}
+
+        if resolved == "keyword":
+            scored = [(item.score(tokens), item) for item in pool]
+            scored = [pair for pair in scored if pair[0] > _KEYWORD_MIN_SCORE]
+            scored.sort(key=lambda pair: pair[0], reverse=True)
+            return [item for _, item in scored[:cap]]
+
+        index = self._vector_index(pool)
+        if resolved == "vector":
+            return [by_id[item_id] for item_id, _ in index.search(query or "", limit=cap) if item_id in by_id]
+
+        # کانال لغویِ RRF باید *واقعاً* لغوی باشد. از ``item.score()`` استفاده
+        # نمی‌کنیم: آن امتیاز تازگی/pin/hits را هم جمع می‌کند، پس یک رکورد تازه با
+        # «صفر» واژه‌ی مشترک هم از آستانه رد می‌شود و RRF را با نویز پر می‌کند —
+        # در عمل hybrid از vector بدتر می‌شد. اینجا فقط هم‌پوشانی واژه می‌شماریم.
+        lexical = sorted(pool, key=lambda rec: _lexical_overlap(tokens, rec), reverse=True)
+        keyword_ranking = [item.id for item in lexical if _lexical_overlap(tokens, item) > 0.0]
+        return [
+            by_id[item_id] for item_id in index.hybrid(query or "", keyword_ranking, limit=cap) if item_id in by_id
+        ]
 
     def touch(self, records: Iterable[MemoryRecord]) -> None:
         """ثبت «مورد استفاده قرار گرفت» (برای رتبه‌بندی و گزارش)."""

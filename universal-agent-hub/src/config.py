@@ -64,6 +64,26 @@ KNOWN_PUBLIC_MODELS: frozenset[str] = frozenset(
 UI_OFF_VALUES: frozenset[str] = frozenset({"off", "none", "no", "false", "disable", "disabled"})
 
 
+#: نام فیلدهایی که ``CommaList`` هستند و باید از رشته‌ی «a, b» به لیست تبدیل شوند.
+#:
+#: چرا دستی؟ چون این فهرست باید *پیش از* ساخت کلاس موجود باشد (decorator در
+#: زمان تعریف کلاس اجرا می‌شود)، پس introspection روی خودِ ``Config`` ممکن نیست.
+#:
+#: این یک باگ واقعی بوده: فیلد ``CommaList`` تازه‌ای اضافه شد ولی اینجا نیامد؛
+#: در نتیجه ``SKILLS_DIRS=/a,/b`` به‌شکل رشته به pydantic رسید و با
+#: ``ValidationError: Input should be a valid list`` منفجر شد — فقط هنگام اجرا،
+#: نه در mypy. برای اینکه دوباره تکرار نشود، تست
+#: ``tests/test_core/test_config.py::test_comma_list_fields_are_registered``
+#: همین فایل را پارس می‌کند و هر فیلد ``CommaList`` ثبت‌نشده را خطا می‌دهد.
+_COMMA_LIST_FIELDS: tuple[str, ...] = (
+    "model_fallbacks",
+    "allowed_directories",
+    "skills_dirs",
+    "subagent_profiles",
+    "http_allowlist",
+)
+
+
 class Config(BaseSettings):
     """پیکربندی مرکزی ایجنت.
 
@@ -195,6 +215,84 @@ class Config(BaseSettings):
     server_static_dir: Path | None = Field(default=None, alias="SERVER_STATIC_DIR")
 
     # ------------------------------------------------------------------
+    # روتین‌های زمان‌بندی‌شده (src/core/routines.py)
+    # ------------------------------------------------------------------
+    #: زمان‌بند روتین‌ها فعال باشد (cron / interval / webhook / event)
+    scheduler_enabled: bool = Field(default=True, alias="SCHEDULER_ENABLED")
+    #: فایل JSON روتین‌ها (پیش‌فرض: ``~/.universal-agent-hub/routines.json``)
+    routines_file: Path | None = Field(default=None, alias="ROUTINES_FILE")
+    #: فاصله‌ی حلقه‌ی زمان‌بندی (ثانیه)
+    routines_tick_seconds: float = Field(default=20.0, ge=1.0, le=600.0, alias="ROUTINES_TICK_SECONDS")
+    #: تعداد اجرای نگه‌داشته‌شده برای هر روتین
+    routine_max_history: int = Field(default=200, ge=5, le=5000, alias="ROUTINE_MAX_HISTORY")
+
+    # ------------------------------------------------------------------
+    # مرکز اعلان‌ها (src/core/notifications.py)
+    # ------------------------------------------------------------------
+    notifications_enabled: bool = Field(default=True, alias="NOTIFICATIONS_ENABLED")
+    notifications_file: Path | None = Field(default=None, alias="NOTIFICATIONS_FILE")
+    notifications_max: int = Field(default=500, ge=20, le=10000, alias="NOTIFICATIONS_MAX")
+    #: در صورت تنظیم، هر اعلان به این URL هم POST می‌شود (best-effort)
+    notification_webhook: str = Field(default="", alias="NOTIFICATION_WEBHOOK")
+
+    # ------------------------------------------------------------------
+    # بسته‌های skill (src/core/skills.py)
+    # ------------------------------------------------------------------
+    #: پوشه‌های حاوی ``SKILL.md`` (جداکننده: ویرگول)
+    skills_dirs: CommaList = Field(default_factory=list, alias="SKILLS_DIRS")
+    #: سقف کاراکتر بلوک skill که وارد prompt می‌شود
+    skills_context_chars: int = Field(default=6000, ge=200, le=40000, alias="SKILLS_CONTEXT_CHARS")
+
+    # ------------------------------------------------------------------
+    # سرورهای MCP (src/core/mcp_client.py)
+    # ------------------------------------------------------------------
+    mcp_enabled: bool = Field(default=True, alias="MCP_ENABLED")
+    #: فایل پیکربندی سرورهای MCP (پیش‌فرض: ``~/.universal-agent-hub/mcp.json``)
+    mcp_config_file: Path | None = Field(default=None, alias="MCP_CONFIG_FILE")
+
+    # ------------------------------------------------------------------
+    # ساب‌ایجنت‌ها (src/core/subagents.py)
+    # ------------------------------------------------------------------
+    subagents_enabled: bool = Field(default=True, alias="SUBAGENTS_ENABLED")
+    #: سقف عمق زنجیره‌ی تفویض (محافظت در برابر بمب بازگشتی)
+    subagent_max_depth: int = Field(default=2, ge=0, le=8, alias="SUBAGENT_MAX_DEPTH")
+    subagent_max_concurrent: int = Field(default=3, ge=1, le=16, alias="SUBAGENT_MAX_CONCURRENT")
+    #: اگر غیرخالی، فقط این پروفایل‌ها به ساب‌ایجنت داده می‌شوند
+    subagent_profiles: CommaList = Field(default_factory=list, alias="SUBAGENT_PROFILES")
+
+    # ------------------------------------------------------------------
+    # بکاپ (src/core/backup.py)
+    # ------------------------------------------------------------------
+    backup_dir: Path | None = Field(default=None, alias="BACKUP_DIR")
+    backup_keep: int = Field(default=20, ge=1, le=500, alias="BACKUP_KEEP")
+
+    # ------------------------------------------------------------------
+    # لاگ ممیزی زنجیره‌هش‌شده (src/core/audit.py)
+    # ------------------------------------------------------------------
+    audit_enabled: bool = Field(default=True, alias="AUDIT_ENABLED")
+    audit_file: Path | None = Field(default=None, alias="AUDIT_FILE")
+
+    # ------------------------------------------------------------------
+    # Heartbeat و Watchdog (src/core/heartbeat.py)
+    # ------------------------------------------------------------------
+    heartbeat_enabled: bool = Field(default=False, alias="HEARTBEAT_ENABLED")
+    heartbeat_interval: float = Field(default=300.0, ge=10.0, le=86400.0, alias="HEARTBEAT_INTERVAL")
+    heartbeat_disk_min_mb: float = Field(default=500.0, ge=0.0, alias="HEARTBEAT_DISK_MIN_MB")
+    watchdog_timeout: float = Field(default=300.0, ge=5.0, le=7200.0, alias="WATCHDOG_TIMEOUT")
+
+    # ------------------------------------------------------------------
+    # لایه‌های امنیتی جدید (src/utils/{injection,leakscan,allowlist}.py)
+    # ------------------------------------------------------------------
+    #: اسکن Prompt Injection روی محتوای نامعتبر
+    injection_scan_enabled: bool = Field(default=True, alias="INJECTION_SCAN_ENABLED")
+    #: کمترین شدتی که باعث *رد* محتوا می‌شود
+    injection_min_severity: str = Field(default="high", alias="INJECTION_MIN_SEVERITY")
+    #: اسکن نشت secret در محتوای خروجی
+    leak_scan_enabled: bool = Field(default=True, alias="LEAK_SCAN_ENABLED")
+    #: allowlist مقاصد HTTP (خالی ⇒ policy تعیین‌شده توسط کد مصرف‌کننده)
+    http_allowlist: CommaList = Field(default_factory=list, alias="HTTP_ALLOWLIST")
+
+    # ------------------------------------------------------------------
     # متادیتای runtime (توسط خود کد پر می‌شود)
     # ------------------------------------------------------------------
     project_root: Path = Field(default_factory=lambda: Path(__file__).resolve().parent.parent)
@@ -225,6 +323,13 @@ class Config(BaseSettings):
         text = str(value or "confirm").strip().lower()
         return text if text in {"confirm", "deny"} else "confirm"
 
+    @field_validator("injection_min_severity", mode="before")
+    @classmethod
+    def _normalize_injection_severity(cls, value: Any) -> str:
+        """شدت نامعتبر به ``high`` برمی‌گردد (fail-safe: سخت‌گیرانه‌تر)."""
+        text = str(value or "").strip().lower()
+        return text if text in {"low", "medium", "high", "critical"} else "high"
+
     @field_validator("search_backend", mode="before")
     @classmethod
     def _normalize_backend(cls, value: Any) -> str:
@@ -233,7 +338,7 @@ class Config(BaseSettings):
         allowed = {"auto", "ddgs", "html", "tavily", "offline"}
         return text if text in allowed else "auto"
 
-    @field_validator("model_fallbacks", "allowed_directories", mode="before")
+    @field_validator(*_COMMA_LIST_FIELDS, mode="before")
     @classmethod
     def _split_list(cls, value: Any) -> Any:
         """پذیرش لیست در ``.env`` هم به شکل ``a, b`` و هم به شکل JSON."""
@@ -368,6 +473,72 @@ class Config(BaseSettings):
         if memory_file is not None and self.memory_dir is None:
             return memory_file.parent.parent / "activity.jsonl"
         return Path.home() / ".universal-agent-hub" / "activity.jsonl"
+
+    # ------------------------------------------------------------------
+    # مسیرهای زیرسیستم‌های جدید
+    # ------------------------------------------------------------------
+    #: همه‌ی این مسیرها از یک قاعده پیروی می‌کنند: اگر کاربر مسیر نسبی داد،
+    #: نسبت به ``project_root`` حل می‌شود؛ اگر چیزی نداد، زیرِ
+    #: ``~/.universal-agent-hub/`` می‌نشیند (کنار حافظه و کلیدها).
+    def _resolve_state_path(self, override: Path | None, default_name: str) -> Path:
+        """مسیر یک فایل وضعیت را حل می‌کند."""
+        if override is not None:
+            path = Path(override).expanduser()
+            return path if path.is_absolute() else self.project_root / path
+        return Path.home() / ".universal-agent-hub" / default_name
+
+    @property
+    def routines_path(self) -> Path:
+        """فایل JSON روتین‌های زمان‌بندی‌شده."""
+        return self._resolve_state_path(self.routines_file, "routines.json")
+
+    @property
+    def notifications_path(self) -> Path:
+        """فایل JSONL اعلان‌ها."""
+        return self._resolve_state_path(self.notifications_file, "notifications.jsonl")
+
+    @property
+    def audit_path(self) -> Path:
+        """فایل JSONL لاگ ممیزی."""
+        return self._resolve_state_path(self.audit_file, "audit.jsonl")
+
+    @property
+    def mcp_config_path(self) -> Path:
+        """فایل پیکربندی سرورهای MCP."""
+        return self._resolve_state_path(self.mcp_config_file, "mcp.json")
+
+    @property
+    def backup_path(self) -> Path:
+        """پوشه‌ی بکاپ‌ها."""
+        if self.backup_dir is not None:
+            path = Path(self.backup_dir).expanduser()
+            return path if path.is_absolute() else self.project_root / path
+        return Path.home() / ".universal-agent-hub" / "backups"
+
+    @property
+    def skill_directories(self) -> list[Path]:
+        """پوشه‌های skill؛ اگر کاربر چیزی نداد، پوشه‌ی پیش‌فرض برمی‌گردد."""
+        if self.skills_dirs:
+            resolved: list[Path] = []
+            for entry in self.skills_dirs:
+                path = Path(str(entry)).expanduser()
+                resolved.append(path if path.is_absolute() else self.project_root / path)
+            return resolved
+        return [Path.home() / ".universal-agent-hub" / "skills"]
+
+    @property
+    def state_paths(self) -> dict[str, Path]:
+        """همه‌ی فایل‌های وضعیت ایجنت (برای بکاپ و ``--doctor``)."""
+        paths = {
+            "routines": self.routines_path,
+            "notifications": self.notifications_path,
+            "audit": self.audit_path,
+            "activity": self.activity_path,
+        }
+        memory = self.memory_path
+        if memory is not None:
+            paths["memory"] = memory
+        return paths
 
     @property
     def web_root(self) -> Path | None:

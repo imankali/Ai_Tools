@@ -31,6 +31,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from src import __version__
 from src.config import Config, get_config
+from src.core.services import ServiceHub
 from src.core.tool_registry import ToolRegistry, discover_tools
 from src.server.auth import RateLimiter, TokenAuthorizer, is_loopback_address, unauthorized
 from src.server.keystore import KeyStore, redact_text
@@ -94,6 +95,8 @@ APP_KEYSTORE: web.AppKey[KeyStore] = web.AppKey("agent_hub_keystore", KeyStore)
 APP_STARTED_AT: web.AppKey[float] = web.AppKey("agent_hub_started_at", float)
 #: شمارنده‌های زنده؛ **باید mutable باشد** چون بعد از start شدن app نتوانیم کلید تازه می‌گذاریم
 APP_STATS: web.AppKey[ServerStats] = web.AppKey("agent_hub_stats", ServerStats)
+#: ``ServiceHub`` مشترک (روتین‌ها/اعلان‌ها/skillها/MCP/بکاپ/ممیزی/heartbeat).
+APP_SERVICES: web.AppKey[ServiceHub] = web.AppKey("agent_hub_services", ServiceHub)
 
 #: مسیرهای مجاز بدون توکن (سلامت و فایل‌های UI)
 PUBLIC_PATHS: frozenset[str] = frozenset({"/healthz", "/favicon.ico", "/manifest.webmanifest", "/sw.js"})
@@ -959,6 +962,26 @@ def create_app(config: Config | None = None, *, keystore: KeyStore | None = None
     app[APP_SESSIONS] = SessionRegistry(settings, keystore=app[APP_KEYSTORE])
     app[APP_STARTED_AT] = time.time()
     app[APP_STATS] = ServerStats()
+    # زیرسیستم‌های Agent-OS. ساختنشان سبک است (بدون شبکه و بدون حلقه)؛
+    # اتصال MCP و شروع زمان‌بند در ``on_startup`` انجام می‌شود.
+    from src.core.services import ServiceHub
+
+    hub = ServiceHub(settings, bus=None)
+    app[APP_SERVICES] = hub
+
+    async def _start_hub(_app: web.Application) -> None:
+        registry = _app[APP_SESSIONS]
+        runner = getattr(registry, "run_prompt", None)
+        summary = await hub.start(agent_runner=runner)
+        logger.info(
+            "agent-os services ready · scheduler=%s · skills=%d · mcp=%d",
+            summary.get("scheduler"),
+            summary.get("skills", 0),
+            summary.get("mcp_tools", 0),
+        )
+
+    app.on_startup.append(_start_hub)
+    app.on_cleanup.append(lambda _app: hub.stop())
     app.on_cleanup.append(lambda _app: registry_for(_app).aclose())
 
     discover_tools()
@@ -994,6 +1017,10 @@ def create_app(config: Config | None = None, *, keystore: KeyStore | None = None
     app.router.add_post("/api/keys/{name}/activate", handle_activate_key)
     app.router.add_post("/api/keys/import-env", handle_import_env)
     app.router.add_get("/ws", handle_websocket)
+
+    from src.server.agent_os import register_agent_os_routes
+
+    register_agent_os_routes(app)
 
     app.router.add_get("/", handle_ui_root)
     root = settings.web_root
